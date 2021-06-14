@@ -24,6 +24,11 @@ export default {
             type: [String, Object],
             required: true,
         },
+        transitionName: {
+            type: String,
+            required: false,
+            default: "fade-move",
+        },
         componentProps: {
             type: Object,
             required: false,
@@ -180,11 +185,12 @@ export default {
 <template>
     <transition-group
         :tag="tag"
-        name="fade-move"
+        :name="transitionName"
         class="uk-position-relative"
         v-bind="componentProps"
     >
         <v-virtual-scroll
+            :key="'virtual-scroll'"
             v-if="virtualScroll"
             v-bind="virtualScrollProps"
             :items="list"
@@ -230,5 +236,28 @@ export default {
     &.over {
         border: 1px dotted #666;
     }
+}
+
+.fade-move-enter-from,
+.fade-move-leave-to {
+    opacity: 0;
+}
+
+.fade-move-leave-from,
+.fade-move-enter-to {
+    opacity: 1;
+}
+
+.fade-move-enter-active,
+.fade-move-leave-active {
+    transition: opacity 0.3s ease !important;
+}
+
+.fade-move-leave-active {
+    position: absolute !important;
+}
+
+.fade-move-move {
+    transition: transform 0.3s ease, opacity 0.3s ease !important;
 }
 </style>

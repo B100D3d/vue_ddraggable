@@ -23,7 +23,33 @@
                 ghost-class="ghost"
                 over-class="over"
                 effect="copy"
+                group="items"
                 drop-from
+            >
+                <template #item="{ item }">
+                    {{ item.text }}
+                </template>
+            </d-draggable>
+        </div>
+        <div>
+            <d-draggable
+                v-model="vItems"
+                item-key="id"
+                tag="div"
+                child-tag="div"
+                :child-props="{ class: 'uk-margin-top' }"
+                class="uk-margin-left"
+                ghost-class="ghost"
+                over-class="over"
+                effect="copy"
+                group="items"
+                drop-from
+                virtual-scroll
+                :virtual-scroll-props="{
+                    height: 400,
+                    width: 100,
+                    itemHeight: 44,
+                }"
             >
                 <template #item="{ item }">
                     {{ item.text }}
@@ -57,6 +83,11 @@ export default {
     data() {
         return {
             items: [
+                { text: "First", id: Math.random() },
+                { text: "Second", id: Math.random() },
+                { text: "Third", id: Math.random() },
+            ],
+            vItems: [
                 { text: "First", id: Math.random() },
                 { text: "Second", id: Math.random() },
                 { text: "Third", id: Math.random() },
