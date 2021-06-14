@@ -1,17 +1,84 @@
 <template>
-    <div class=""></div>
+    <div
+        class="
+            uk-width-1-1
+            uk-height-1-1
+            uk-padding-large
+            uk-grid
+            uk-position-relative
+        "
+        uk-grid
+    >
+        <div class="uk-position-top-right uk-margin-top uk-margin-right">
+            <button uk-icon="move" class="uk-icon-button" @click="open" />
+        </div>
+
+        <div>
+            <d-draggable
+                v-model="items"
+                item-key="id"
+                tag="div"
+                child-tag="div"
+                :child-props="{ class: 'uk-margin-top' }"
+                ghost-class="ghost"
+                over-class="over"
+                effect="copy"
+                drop-from
+            >
+                <template #item="{ item }">
+                    {{ item.text }}
+                </template>
+            </d-draggable>
+        </div>
+        <div>
+            <select
+                class="uk-select uk-margin-left"
+                v-model="selected"
+                @drop="handleSelectDrop"
+                @dragover.stop.prevent="dragover"
+            >
+                <option v-for="item of selection" :key="item" :value="item">
+                    {{ item }}
+                </option>
+            </select>
+        </div>
+    </div>
 </template>
 
 <script>
 import UIkit from "uikit"
 import Icons from "uikit/dist/js/uikit-icons"
+import DDraggable from "@/components/DDraggable/DDraggable"
+import { parseJSON } from "@/utils"
 UIkit.use(Icons)
 export default {
     name: "App",
+    components: { DDraggable },
+    data() {
+        return {
+            items: [
+                { text: "First", id: Math.random() },
+                { text: "Second", id: Math.random() },
+                { text: "Third", id: Math.random() },
+            ],
+            selected: "1",
+            selection: ["1", "2", "3"],
+        }
+    },
 
-    data: () => ({
-        //
-    }),
+    methods: {
+        open() {
+            window.open("/", "_blank")
+        },
+        handleSelectDrop(e) {
+            const item = parseJSON(e.dataTransfer.getData("item"), "")
+            const text = typeof item === "string" ? item : item.text || ""
+            this.selection.push(text)
+        },
+        dragover(e) {
+            return false
+        },
+    },
 }
 </script>
 
@@ -60,5 +127,14 @@ body {
     * {
         font-family: -apple-system, BlinkMacSystemFont, Roboto, serif;
     }
+}
+
+.ghost {
+    border: 1px dashed #666;
+    opacity: 0.4;
+}
+
+.over {
+    border: 1px dashed #666;
 }
 </style>
