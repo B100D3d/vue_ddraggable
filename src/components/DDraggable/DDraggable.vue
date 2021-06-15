@@ -75,21 +75,22 @@ export default {
                 const nodeListeners = node.data.on || {}
                 const nodeAttrs = node.data.attrs || {}
                 const nodeClass = node.data.class || {}
-                node.key = this.getKey(item, index)
+                const key = this.getKey(item, index)
+                node.key = key
                 node.data.on = {
                     ...nodeListeners,
-                    dragstart: (e) => this.start(e, item),
-                    dragend: (e) => this.end(e, item),
-                    dragenter: (e) => this.enter(e, item),
-                    dragleave: (e) => this.leave(e, item),
-                    dragover: (e) => this.dragover(e, item),
+                    dragstart: (e) => this.start(e, key),
+                    dragend: (e) => this.end(e, key),
+                    dragenter: (e) => this.enter(e, key),
+                    dragleave: (e) => this.leave(e, key),
+                    dragover: (e) => this.dragover(e, key),
                     drop: (e) => this.drop(e, index),
                 }
                 node.data.attrs = { ...nodeAttrs, draggable: "true" }
                 node.data.class = {
                     ...nodeClass,
-                    [this.ghostClass]: item === this.draggingItem,
-                    [this.overClass]: item === this.overItem,
+                    [this.ghostClass]: key === this.draggingItemKey,
+                    [this.overClass]: key === this.overItemKey,
                 }
                 return node
             }
@@ -107,8 +108,14 @@ export default {
                 this.tag === "v-virtual-scroll" ? VVirtualScroll : this.tag
 
             if (this.tag === "v-virtual-scroll") {
+                const props = {
+                    ...(this.componentOptions.props || {}),
+                    items: this.localList,
+                }
                 return h(tag, {
                     ...this.componentOptions,
+                    props,
+                    items: this.localList,
                     scopedSlots: {
                         default: ({ item, index }) =>
                             patchSlots({ item, index }),
@@ -129,8 +136,8 @@ export default {
             dragging: false,
             dropped: false,
 
-            overItem: null,
-            draggingItem: null,
+            overItemKey: null,
+            draggingItemKey: null,
         }
     },
 
@@ -141,15 +148,22 @@ export default {
             }
             return this.itemKey ? item[this.itemKey] : index
         },
+        getItem(key, list) {
+            return list.find((item, index) => {
+                return this.getKey(item, index) === key
+            })
+        },
 
         getDragItem(e) {
             const dragItem = e.dataTransfer.getData("item")
             const group = e.dataTransfer.getData("group")
             return { item: parseJSON(dragItem, null), group }
         },
-        start(e, item) {
+        start(e, key) {
             this.dragging = true
-            this.draggingItem = item
+            this.draggingItemKey = key
+
+            const item = this.getItem(key, this.localList)
 
             e.dataTransfer.effectAllowed = this.effect
             e.dataTransfer.setData("item", stringify(item))
@@ -159,19 +173,15 @@ export default {
                 e.dataTransfer.setDragImage(this.dragImage, 0, 0)
             }
         },
-        end(e, droppedItem) {
+        end(e, droppedItemKey) {
             this.dragging = false
-            this.draggingItem = null
+            this.draggingItemKey = null
 
             // was dropped inside this list
             if (this.dropped) {
                 this.$emit("change", this.localList)
             } else {
-                const originalItem = this.list.find(
-                    (item, index) =>
-                        item[this.getKey(item, index)] ===
-                        droppedItem[this.getKey(item, index)]
-                )
+                const originalItem = this.getItem(droppedItemKey, this.list)
                 const effect = e.dataTransfer.dropEffect
                 if (effect === EFFECTS.MOVE) {
                     this.$emit(
@@ -181,17 +191,21 @@ export default {
                 }
             }
 
-            this.overItem = null
+            this.overItemKey = null
             this.dropped = false
         },
-        enter(e, item) {
-            this.overItem = item
-
+        enter(e, key) {
+            this.overItemKey = key
             if (this.dragging) {
-                const draggingItemIdx = this.localList.indexOf(
-                    this.draggingItem
+                const overItem = this.getItem(key, this.localList)
+                const draggingItem = this.getItem(
+                    this.draggingItemKey,
+                    this.localList
                 )
-                const overIdx = this.localList.indexOf(this.overItem)
+
+                const overIdx = this.localList.indexOf(overItem)
+                const draggingItemIdx = this.localList.indexOf(draggingItem)
+
                 // swap two items
                 ;[this.localList[draggingItemIdx], this.localList[overIdx]] = [
                     this.localList[overIdx],
@@ -200,7 +214,7 @@ export default {
             }
         },
         leave(e) {
-            this.overItem = null
+            this.overItemKey = null
         },
         dragover(e) {
             return prevent(e)
@@ -225,7 +239,7 @@ export default {
                 this.$emit("drop", item)
             }
 
-            this.overItem = null
+            this.overItemKey = null
             return prevent(e)
         },
     },

@@ -34,6 +34,12 @@ export default {
                 id: Math.random(),
             })
         },
+        addVItem() {
+            this.vItems.push({
+                text: `New vItem ${this.vItems.length}`,
+                id: Math.random(),
+            })
+        },
         handleSelectDrop(item) {
             const text = typeof item === "string" ? item : item.text || ""
             this.selection.push(text)
@@ -89,7 +95,7 @@ export default {
                 @click="addItem"
             />
         </div>
-        <div>
+        <div class="uk-flex uk-flex-column uk-flex-middle">
             <d-draggable
                 v-model="vItems"
                 item-key="id"
@@ -98,9 +104,8 @@ export default {
                 over-class="over"
                 :component-options="{
                     props: {
-                        items: vItems,
                         height: 400,
-                        width: 100,
+                        width: 200,
                         itemHeight: 76,
                     },
                 }"
@@ -117,6 +122,11 @@ export default {
                     </div>
                 </template>
             </d-draggable>
+            <a
+                uk-icon="icon: plus; ratio: 0.8"
+                class="uk-margin-top"
+                @click="addVItem"
+            />
         </div>
         <div>
             <drop-zone @drop="handleSelectDrop">
@@ -175,6 +185,10 @@ body {
     * {
         font-family: -apple-system, BlinkMacSystemFont, Roboto, serif;
     }
+}
+
+.v-virtual-scroll {
+    flex: initial;
 }
 
 .item {
