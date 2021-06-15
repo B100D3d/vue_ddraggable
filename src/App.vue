@@ -1,7 +1,6 @@
 <script>
 import UIkit from "uikit"
 import Icons from "uikit/dist/js/uikit-icons"
-import { parseJSON } from "@/utils"
 import DDraggable from "@/components/DDraggable/DDraggable"
 import DropZone from "@/components/DropZone"
 UIkit.use(Icons)
@@ -29,6 +28,12 @@ export default {
         open() {
             window.open("/", "_blank")
         },
+        addItem() {
+            this.items.push({
+                text: `New item ${this.items.length}`,
+                id: Math.random(),
+            })
+        },
         handleSelectDrop(item) {
             const text = typeof item === "string" ? item : item.text || ""
             this.selection.push(text)
@@ -51,13 +56,15 @@ export default {
         <div class="uk-position-top-right uk-margin-top uk-margin-right">
             <button uk-icon="move" class="uk-icon-button" @click="open" />
         </div>
-        <div>
+        <div class="uk-flex uk-flex-column uk-flex-middle">
             <d-draggable
                 v-model="items"
                 item-key="id"
                 tag="transition-group"
                 ghost-class="ghost"
                 over-class="over"
+                effect="move"
+                drop-from
                 :component-options="{
                     props: {
                         tag: 'div',
@@ -66,11 +73,21 @@ export default {
                 }"
             >
                 <template #item="{ item }">
-                    <div class="uk-margin-top">
+                    <div
+                        class="
+                            item
+                            uk-margin-top uk-text-center uk-padding-small
+                        "
+                    >
                         {{ item.text }}
                     </div>
                 </template>
             </d-draggable>
+            <a
+                uk-icon="icon: plus; ratio: 0.8"
+                class="uk-margin-top"
+                @click="addItem"
+            />
         </div>
         <div>
             <d-draggable
@@ -84,13 +101,18 @@ export default {
                         items: vItems,
                         height: 400,
                         width: 100,
-                        itemHeight: 44,
+                        itemHeight: 76,
                     },
                 }"
                 drop-from
             >
                 <template #item="{ item }">
-                    <div class="uk-margin-top">
+                    <div
+                        class="
+                            item
+                            uk-margin-top uk-text-center uk-padding-small
+                        "
+                    >
                         {{ item.text }}
                     </div>
                 </template>
@@ -155,12 +177,13 @@ body {
     }
 }
 
-.ghost {
-    border: 1px dashed #666;
-    opacity: 0.4;
-}
+.item {
+    border: 1px solid #f5f5f5;
+    background-color: white;
 
-.over {
-    border: 1px dashed #666;
+    &.ghost {
+        opacity: 0.4;
+        background-color: rgba(169, 188, 234, 0.82);
+    }
 }
 </style>

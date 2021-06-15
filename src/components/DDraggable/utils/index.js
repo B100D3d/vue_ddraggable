@@ -9,6 +9,11 @@ export const parseJSON = (str, defaultValue) => {
     }
 }
 
+export const stringify = (obj) => {
+    if (typeof obj === "string") return obj
+    return JSON.stringify(obj)
+}
+
 export const prevent = (e) => {
     e.stopPropagation()
     e.preventDefault()

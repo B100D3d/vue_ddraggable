@@ -1,6 +1,11 @@
 <script>
-import { EFFECTS, parseJSON, prevent } from "@/components/DDraggable/utils"
-import { cloneDeep } from "lodash"
+import {
+    EFFECTS,
+    parseJSON,
+    prevent,
+    stringify,
+} from "@/components/DDraggable/utils"
+import { cloneDeep, isEqual } from "lodash"
 import { VVirtualScroll } from "vuetify/lib"
 
 export default {
@@ -73,18 +78,18 @@ export default {
                 node.key = this.getKey(item, index)
                 node.data.on = {
                     ...nodeListeners,
-                    dragstart: (e) => this.start(e, index),
-                    dragend: (e) => this.end(e, index),
-                    dragenter: (e) => this.enter(e, index),
-                    dragleave: (e) => this.leave(e, index),
-                    dragover: (e) => this.dragover(e, index),
+                    dragstart: (e) => this.start(e, item),
+                    dragend: (e) => this.end(e, item),
+                    dragenter: (e) => this.enter(e, item),
+                    dragleave: (e) => this.leave(e, item),
+                    dragover: (e) => this.dragover(e, item),
                     drop: (e) => this.drop(e, index),
                 }
                 node.data.attrs = { ...nodeAttrs, draggable: "true" }
                 node.data.class = {
                     ...nodeClass,
-                    [this.ghostClass]: index === this.ghostIdx,
-                    [this.overClass]: this.overIdx === index,
+                    [this.ghostClass]: item === this.draggingItem,
+                    [this.overClass]: item === this.overItem,
                 }
                 return node
             }
@@ -94,7 +99,7 @@ export default {
                     patchNode(node, { item, index })
                 )
 
-            const children = this.list.flatMap((item, index) =>
+            const children = this.localList.flatMap((item, index) =>
                 patchSlots({ item, index })
             )
 
@@ -119,10 +124,13 @@ export default {
 
     data() {
         return {
+            localList: cloneDeep(this.list),
+
             dragging: false,
             dropped: false,
-            overIdx: null,
-            ghostIdx: null,
+
+            overItem: null,
+            draggingItem: null,
         }
     },
 
@@ -139,49 +147,60 @@ export default {
             const group = e.dataTransfer.getData("group")
             return { item: parseJSON(dragItem, null), group }
         },
-        start(e, index) {
+        start(e, item) {
             this.dragging = true
-            this.ghostIdx = index
+            this.draggingItem = item
 
             e.dataTransfer.effectAllowed = this.effect
-            e.dataTransfer.setData("item", JSON.stringify(this.list[index]))
+            e.dataTransfer.setData("item", stringify(item))
             e.dataTransfer.setData("group", this.group)
 
             if (this.dragImage) {
                 e.dataTransfer.setDragImage(this.dragImage, 0, 0)
             }
         },
-        end(e, droppedItemIdx) {
+        end(e, droppedItem) {
             this.dragging = false
-            this.ghostIdx = null
+            this.draggingItem = null
 
             // was dropped inside this list
             if (this.dropped) {
-                // swap two items
-                const newList = cloneDeep(this.list)
-                ;[newList[droppedItemIdx], newList[this.overIdx]] = [
-                    this.list[this.overIdx],
-                    this.list[droppedItemIdx],
-                ]
-                this.$emit("change", newList)
+                this.$emit("change", this.localList)
             } else {
+                const originalItem = this.list.find(
+                    (item, index) =>
+                        item[this.getKey(item, index)] ===
+                        droppedItem[this.getKey(item, index)]
+                )
                 const effect = e.dataTransfer.dropEffect
                 if (effect === EFFECTS.MOVE) {
                     this.$emit(
                         "change",
-                        this.list.filter((_, idx) => idx !== droppedItemIdx)
+                        this.list.filter((item) => item !== originalItem)
                     )
                 }
             }
 
-            this.overIdx = null
+            this.overItem = null
             this.dropped = false
         },
-        enter(e, index) {
-            this.overIdx = index
+        enter(e, item) {
+            this.overItem = item
+
+            if (this.dragging) {
+                const draggingItemIdx = this.localList.indexOf(
+                    this.draggingItem
+                )
+                const overIdx = this.localList.indexOf(this.overItem)
+                // swap two items
+                ;[this.localList[draggingItemIdx], this.localList[overIdx]] = [
+                    this.localList[overIdx],
+                    this.localList[draggingItemIdx],
+                ]
+            }
         },
         leave(e) {
-            this.overIdx = null
+            this.overItem = null
         },
         dragover(e) {
             return prevent(e)
@@ -198,18 +217,23 @@ export default {
             if (this.group !== group) return prevent(e)
 
             if (this.dropFrom) {
-                const newList = cloneDeep(this.list)
-                newList.splice(index + 1, 0, item)
-                this.$emit("change", newList)
+                this.localList.splice(index + 1, 0, item)
+                this.$emit("change", this.localList)
 
                 this.dropped = false
             } else {
                 this.$emit("drop", item)
             }
 
-            this.overIdx = null
-
+            this.overItem = null
             return prevent(e)
+        },
+    },
+    watch: {
+        list() {
+            if (!isEqual(this.list, this.localList)) {
+                this.localList = cloneDeep(this.list)
+            }
         },
     },
 }
