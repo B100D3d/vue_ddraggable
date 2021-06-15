@@ -33,6 +33,7 @@ export default {
             type: String,
             required: false,
             default: EFFECTS.COPY,
+            validator: (effect) => Object.values(EFFECTS).includes(effect),
         },
         group: {
             type: String,
