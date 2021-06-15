@@ -1,11 +1,11 @@
 <script>
-import { cloneDeep } from "lodash"
 import { EFFECTS, parseJSON, prevent } from "@/components/DDraggable/utils"
-import DDraggableItem from "@/components/DDraggable/DDraggableItem"
+import { cloneDeep } from "lodash"
+import { VVirtualScroll } from "vuetify/lib"
 
 export default {
     name: "DDraggable",
-    components: { DDraggableItem },
+    components: { VVirtualScroll },
     model: {
         prop: "list",
         event: "change",
@@ -16,30 +16,16 @@ export default {
             required: true,
         },
         itemKey: {
-            type: String,
+            type: [String, Function],
             required: false,
             default: null,
         },
         tag: {
-            type: [String, Object],
+            type: [String, Function],
             required: true,
         },
-        transitionName: {
-            type: String,
-            required: false,
-            default: "fade-move",
-        },
-        componentProps: {
+        componentOptions: {
             type: Object,
-            required: false,
-            default: () => ({}),
-        },
-        childTag: {
-            type: [String, Object, Function],
-            required: true,
-        },
-        childProps: {
-            type: [Object, Function],
             required: false,
             default: () => ({}),
         },
@@ -52,16 +38,6 @@ export default {
             type: String,
             required: false,
             default: "",
-        },
-        virtualScroll: {
-            type: Boolean,
-            required: false,
-            default: false,
-        },
-        virtualScrollProps: {
-            type: Object,
-            required: false,
-            default: () => ({}),
         },
         dropFrom: {
             type: Boolean,
@@ -85,27 +61,76 @@ export default {
         },
     },
 
+    render(h) {
+        try {
+            const { item: itemSlot } = this.$scopedSlots
+
+            const patchNode = (node, { item, index }) => {
+                const nodeListeners = node.data.on || {}
+                const nodeAttrs = node.data.attrs || {}
+                const nodeClass = node.data.class || {}
+                node.key = this.getKey(item, index)
+                node.data.on = {
+                    ...nodeListeners,
+                    dragstart: (e) => this.start(e, index),
+                    dragend: (e) => this.end(e, index),
+                    dragenter: (e) => this.enter(e, index),
+                    dragleave: (e) => this.leave(e, index),
+                    dragover: (e) => this.dragover(e, index),
+                    drop: (e) => this.drop(e, index),
+                }
+                node.data.attrs = { ...nodeAttrs, draggable: "true" }
+                node.data.class = {
+                    ...nodeClass,
+                    [this.ghostClass]: index === this.ghostIdx,
+                    [this.overClass]: this.overIdx === index,
+                }
+                return node
+            }
+
+            const patchSlots = ({ item, index }) =>
+                itemSlot({ item, index }).map((node) =>
+                    patchNode(node, { item, index })
+                )
+
+            const children = this.list.flatMap((item, index) =>
+                patchSlots({ item, index })
+            )
+
+            const tag =
+                this.tag === "v-virtual-scroll" ? VVirtualScroll : this.tag
+
+            if (this.tag === "v-virtual-scroll") {
+                return h(tag, {
+                    ...this.componentOptions,
+                    scopedSlots: {
+                        default: ({ item, index }) =>
+                            patchSlots({ item, index }),
+                    },
+                })
+            }
+
+            return h(tag, this.componentOptions, children)
+        } catch (e) {
+            return h("pre", { style: { color: "red" } }, e.stack)
+        }
+    },
+
     data() {
         return {
             dragging: false,
             dropped: false,
             overIdx: null,
+            ghostIdx: null,
         }
     },
 
     methods: {
-        getChildTag(item, index) {
-            if (typeof this.childTag === "function") {
-                return this.childTag(item, index)
+        getKey(item, index) {
+            if (typeof this.itemKey === "function") {
+                return this.itemKey(item, index)
             }
-            return this.childTag
-        },
-
-        getChildProps(item, index) {
-            if (typeof this.childProps === "function") {
-                return this.childProps(item, index)
-            }
-            return this.childProps
+            return this.itemKey ? item[this.itemKey] : index
         },
 
         getDragItem(e) {
@@ -115,6 +140,7 @@ export default {
         },
         start(e, index) {
             this.dragging = true
+            this.ghostIdx = index
 
             e.dataTransfer.effectAllowed = this.effect
             e.dataTransfer.setData("item", JSON.stringify(this.list[index]))
@@ -126,6 +152,7 @@ export default {
         },
         end(e, droppedItemIdx) {
             this.dragging = false
+            this.ghostIdx = null
 
             // was dropped inside this list
             if (this.dropped) {
@@ -155,6 +182,9 @@ export default {
         leave(e) {
             this.overIdx = null
         },
+        dragover(e) {
+            return prevent(e)
+        },
         drop(e, index) {
             // from this list
             if (this.dragging) {
@@ -173,91 +203,13 @@ export default {
 
                 this.dropped = false
             } else {
-                this.$emit("drop", { item })
+                this.$emit("drop", item)
             }
+
+            this.overIdx = null
 
             return prevent(e)
         },
     },
 }
 </script>
-
-<template>
-    <transition-group
-        :tag="tag"
-        :name="transitionName"
-        class="uk-position-relative"
-        v-bind="componentProps"
-    >
-        <v-virtual-scroll
-            :key="'virtual-scroll'"
-            v-if="virtualScroll"
-            v-bind="virtualScrollProps"
-            :items="list"
-        >
-            <template #default="{ item, index }">
-                <d-draggable-item
-                    :key="itemKey ? item[itemKey] : index"
-                    :tag="getChildTag(item, index)"
-                    :props="getChildProps(item, index)"
-                    :ghost-class="ghostClass"
-                    :over-class="overClass"
-                    @dragstart="start($event, index)"
-                    @dragend="end($event, index)"
-                    @dragenter.stop.prevent="enter($event, index)"
-                    @dragleave.stop.prevent="leave($event, index)"
-                    @drop.stop.prevent="drop($event, index)"
-                >
-                    <slot name="item" :item="item" :index="index" />
-                </d-draggable-item>
-            </template>
-        </v-virtual-scroll>
-        <d-draggable-item
-            v-else
-            v-for="(item, index) of list"
-            :key="itemKey ? item[itemKey] : index"
-            :tag="getChildTag(item, index)"
-            :props="getChildProps(item, index)"
-            :ghost-class="ghostClass"
-            :over-class="overClass"
-            @dragstart="start($event, index)"
-            @dragend="end($event, index)"
-            @dragenter.stop.prevent="enter($event, index)"
-            @dragleave.stop.prevent="leave($event, index)"
-            @drop.stop.prevent="drop($event, index)"
-        >
-            <slot name="item" :item="item" :index="index" />
-        </d-draggable-item>
-    </transition-group>
-</template>
-
-<style lang="scss" scoped>
-.ddraggable-item {
-    &.over {
-        border: 1px dotted #666;
-    }
-}
-
-.fade-move-enter-from,
-.fade-move-leave-to {
-    opacity: 0;
-}
-
-.fade-move-leave-from,
-.fade-move-enter-to {
-    opacity: 1;
-}
-
-.fade-move-enter-active,
-.fade-move-leave-active {
-    transition: opacity 0.3s ease !important;
-}
-
-.fade-move-leave-active {
-    position: absolute !important;
-}
-
-.fade-move-move {
-    transition: transform 0.3s ease, opacity 0.3s ease !important;
-}
-</style>

@@ -1,85 +1,13 @@
-<template>
-    <div
-        class="
-            uk-width-1-1
-            uk-height-1-1
-            uk-padding-large
-            uk-grid
-            uk-position-relative
-        "
-        uk-grid
-    >
-        <div class="uk-position-top-right uk-margin-top uk-margin-right">
-            <button uk-icon="move" class="uk-icon-button" @click="open" />
-        </div>
-
-        <div>
-            <d-draggable
-                v-model="items"
-                item-key="id"
-                tag="div"
-                child-tag="div"
-                :child-props="{ class: 'uk-margin-top' }"
-                ghost-class="ghost"
-                over-class="over"
-                effect="copy"
-                group="items"
-                drop-from
-            >
-                <template #item="{ item }">
-                    {{ item.text }}
-                </template>
-            </d-draggable>
-        </div>
-        <div>
-            <d-draggable
-                v-model="vItems"
-                item-key="id"
-                tag="div"
-                child-tag="div"
-                :child-props="{ class: 'uk-margin-top' }"
-                class="uk-margin-left"
-                ghost-class="ghost"
-                over-class="over"
-                effect="copy"
-                group="items"
-                drop-from
-                virtual-scroll
-                :virtual-scroll-props="{
-                    height: 400,
-                    width: 100,
-                    itemHeight: 44,
-                }"
-            >
-                <template #item="{ item }">
-                    {{ item.text }}
-                </template>
-            </d-draggable>
-        </div>
-        <div>
-            <select
-                class="uk-select uk-margin-left"
-                v-model="selected"
-                @drop="handleSelectDrop"
-                @dragover.stop.prevent="dragover"
-            >
-                <option v-for="item of selection" :key="item" :value="item">
-                    {{ item }}
-                </option>
-            </select>
-        </div>
-    </div>
-</template>
-
 <script>
 import UIkit from "uikit"
 import Icons from "uikit/dist/js/uikit-icons"
-import DDraggable from "@/components/DDraggable/DDraggable"
 import { parseJSON } from "@/utils"
+import DDraggable from "@/components/DDraggable/DDraggable"
+import DropZone from "@/components/DropZone"
 UIkit.use(Icons)
 export default {
     name: "App",
-    components: { DDraggable },
+    components: { DropZone, DDraggable },
     data() {
         return {
             items: [
@@ -101,17 +29,84 @@ export default {
         open() {
             window.open("/", "_blank")
         },
-        handleSelectDrop(e) {
-            const item = parseJSON(e.dataTransfer.getData("item"), "")
+        handleSelectDrop(item) {
             const text = typeof item === "string" ? item : item.text || ""
             this.selection.push(text)
-        },
-        dragover(e) {
-            return false
         },
     },
 }
 </script>
+
+<template>
+    <div
+        class="
+            uk-width-1-1
+            uk-height-1-1
+            uk-padding-large
+            uk-grid
+            uk-position-relative
+        "
+        uk-grid
+    >
+        <div class="uk-position-top-right uk-margin-top uk-margin-right">
+            <button uk-icon="move" class="uk-icon-button" @click="open" />
+        </div>
+        <div>
+            <d-draggable
+                v-model="items"
+                item-key="id"
+                tag="transition-group"
+                ghost-class="ghost"
+                over-class="over"
+                :component-options="{
+                    props: {
+                        tag: 'div',
+                        name: 'fade-move',
+                    },
+                }"
+            >
+                <template #item="{ item }">
+                    <div class="uk-margin-top">
+                        {{ item.text }}
+                    </div>
+                </template>
+            </d-draggable>
+        </div>
+        <div>
+            <d-draggable
+                v-model="vItems"
+                item-key="id"
+                tag="v-virtual-scroll"
+                ghost-class="ghost"
+                over-class="over"
+                :component-options="{
+                    props: {
+                        items: vItems,
+                        height: 400,
+                        width: 100,
+                        itemHeight: 44,
+                    },
+                }"
+                drop-from
+            >
+                <template #item="{ item }">
+                    <div class="uk-margin-top">
+                        {{ item.text }}
+                    </div>
+                </template>
+            </d-draggable>
+        </div>
+        <div>
+            <drop-zone @drop="handleSelectDrop">
+                <select class="uk-select uk-margin-left" v-model="selected">
+                    <option v-for="item of selection" :key="item" :value="item">
+                        {{ item }}
+                    </option>
+                </select>
+            </drop-zone>
+        </div>
+    </div>
+</template>
 
 <style lang="scss">
 @import url("https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap");
