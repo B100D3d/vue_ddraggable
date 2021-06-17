@@ -8,6 +8,7 @@ import {
 import { cloneDeep, isEqual } from "lodash"
 import { VVirtualScroll } from "vuetify/lib"
 
+const DRAGGABLE_ITEM_CLASS = "d-draggable-item"
 export default {
     name: "DDraggable",
     components: { VVirtualScroll },
@@ -65,6 +66,11 @@ export default {
             required: false,
             default: null,
         },
+        handle: {
+            type: String,
+            required: false,
+            default: "",
+        },
     },
 
     render(h) {
@@ -72,6 +78,7 @@ export default {
             const { item: itemSlot } = this.$scopedSlots
 
             const patchNode = (node, { item, index }) => {
+                if (!node.data) node.data = {}
                 const nodeListeners = node.data.on || {}
                 const nodeAttrs = node.data.attrs || {}
                 const nodeClass = node.data.class || {}
@@ -79,14 +86,20 @@ export default {
                 node.key = key
                 node.data.on = {
                     ...nodeListeners,
-                    dragstart: (e) => this.start(e, key),
-                    dragend: (e) => this.end(e, key),
                     dragenter: (e) => this.enter(e, key),
                     dragleave: (e) => this.leave(e, key),
                     dragover: (e) => this.dragover(e, key),
                     drop: (e) => this.drop(e, index),
                 }
-                node.data.attrs = { ...nodeAttrs, draggable: "true" }
+                if (!this.handle) {
+                    node.data.on = {
+                        ...node.data.on,
+                        dragstart: (e) => this.start(e, key),
+                        dragend: (e) => this.end(e, key),
+                    }
+                    node.data.attrs = { ...nodeAttrs, draggable: "true" }
+                }
+                node.data.staticClass += ` ${DRAGGABLE_ITEM_CLASS}`
                 node.data.class = {
                     ...nodeClass,
                     [this.ghostClass]: key === this.draggingItemKey,
@@ -129,6 +142,16 @@ export default {
         }
     },
 
+    mounted() {
+        if (this.handle) {
+            this.handleChildren()
+        }
+    },
+    updated() {
+        if (this.handle) {
+            this.handleChildren()
+        }
+    },
     data() {
         return {
             localList: cloneDeep(this.list),
@@ -142,6 +165,20 @@ export default {
     },
 
     methods: {
+        handleChildren() {
+            this.localList.forEach((item, index) => {
+                const key = this.getKey(item, index)
+                const elems = this.$el.children[index].querySelectorAll(
+                    this.handle
+                )
+                elems.forEach((element) => {
+                    element.draggable = true
+                    element.ondragstart = (e) => this.start(e, key)
+                    element.ondragend = (e) => this.end(e, key)
+                })
+            })
+        },
+
         getKey(item, index) {
             if (typeof this.itemKey === "function") {
                 return this.itemKey(item, index)
@@ -168,6 +205,18 @@ export default {
             e.dataTransfer.effectAllowed = this.effect
             e.dataTransfer.setData("item", stringify(item))
             e.dataTransfer.setData("group", this.group)
+
+            /* set d-draggable-item as drag image when using handle item */
+            if (this.handle) {
+                const eventPath =
+                    e.path || (e.composedPath && e.composedPath()) || []
+                const element = eventPath.find((element) =>
+                    element.classList.contains(DRAGGABLE_ITEM_CLASS)
+                )
+                if (element) {
+                    e.dataTransfer.setDragImage(element, 0, 0)
+                }
+            }
 
             if (this.dragImage) {
                 e.dataTransfer.setDragImage(this.dragImage, 0, 0)

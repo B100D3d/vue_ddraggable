@@ -71,6 +71,7 @@ export default {
                 over-class="over"
                 effect="move"
                 drop-from
+                handle=".handle"
                 :component-options="{
                     props: {
                         tag: 'div',
@@ -82,10 +83,15 @@ export default {
                     <div
                         class="
                             item
-                            uk-margin-top uk-text-center uk-padding-small
+                            uk-margin-top
+                            uk-text-center
+                            uk-padding-small
+                            uk-flex
+                            uk-flex-middle
                         "
                     >
                         {{ item.text }}
+                        <a class="handle uk-margin-left" uk-icon="table" />
                     </div>
                 </template>
             </d-draggable>
