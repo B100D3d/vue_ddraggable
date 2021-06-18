@@ -5,10 +5,12 @@ import {
     prevent,
     stringify,
 } from "@/components/DDraggable/utils"
-import { cloneDeep, isEqual } from "lodash"
+import { cloneDeep, isEqual, camelCase } from "lodash"
 import { VVirtualScroll } from "vuetify/lib"
 
-const DRAGGABLE_ITEM_CLASS = "d-draggable-item"
+const DDRAGGABLE_ITEM_CLASS = "d-draggable-item"
+const DDRAGGABLE_ITEM_ELEMENT_KEY = "ddraggable-item-key"
+const VIRTUAL_SCROLL_TAG = "v-virtual-scroll"
 export default {
     name: "DDraggable",
     components: { VVirtualScroll },
@@ -91,15 +93,22 @@ export default {
                     dragover: (e) => this.dragover(e, key),
                     drop: (e) => this.drop(e, index),
                 }
+                node.data.attrs = {
+                    ...nodeAttrs,
+                    [`data-${DDRAGGABLE_ITEM_ELEMENT_KEY}`]: key,
+                }
                 if (!this.handle) {
                     node.data.on = {
                         ...node.data.on,
                         dragstart: (e) => this.start(e, key),
                         dragend: (e) => this.end(e, key),
                     }
-                    node.data.attrs = { ...nodeAttrs, draggable: "true" }
+                    node.data.attrs = {
+                        ...node.data.attrs,
+                        draggable: "true",
+                    }
                 }
-                node.data.staticClass += ` ${DRAGGABLE_ITEM_CLASS}`
+                node.data.staticClass += ` ${DDRAGGABLE_ITEM_CLASS}`
                 node.data.class = {
                     ...nodeClass,
                     [this.ghostClass]: key === this.draggingItemKey,
@@ -118,9 +127,9 @@ export default {
             )
 
             const tag =
-                this.tag === "v-virtual-scroll" ? VVirtualScroll : this.tag
+                this.tag === VIRTUAL_SCROLL_TAG ? VVirtualScroll : this.tag
 
-            if (this.tag === "v-virtual-scroll") {
+            if (this.tag === VIRTUAL_SCROLL_TAG) {
                 const props = {
                     ...(this.componentOptions.props || {}),
                     items: this.localList,
@@ -165,16 +174,22 @@ export default {
     },
 
     methods: {
-        handleChildren() {
-            this.localList.forEach((item, index) => {
-                const key = this.getKey(item, index)
-                const elems = this.$el.children[index].querySelectorAll(
-                    this.handle
-                )
-                elems.forEach((element) => {
-                    element.draggable = true
-                    element.ondragstart = (e) => this.start(e, key)
-                    element.ondragend = (e) => this.end(e, key)
+        async handleChildren() {
+            /* waiting for virtual scroll mounted */
+            if (this.tag === VIRTUAL_SCROLL_TAG) {
+                await this.$nextTick()
+            }
+            const children = this.$el.querySelectorAll(
+                `.${DDRAGGABLE_ITEM_CLASS}`
+            )
+            children.forEach((element) => {
+                const key =
+                    element.dataset[camelCase(DDRAGGABLE_ITEM_ELEMENT_KEY)]
+                const handleElements = element.querySelectorAll(this.handle)
+                handleElements.forEach((handleElement) => {
+                    handleElement.draggable = true
+                    handleElement.ondragstart = (e) => this.start(e, key)
+                    handleElement.ondragend = (e) => this.end(e, key)
                 })
             })
         },
@@ -187,7 +202,7 @@ export default {
         },
         getItem(key, list) {
             return list.find((item, index) => {
-                return this.getKey(item, index) === key
+                return this.getKey(item, index).toString() === key.toString()
             })
         },
 
@@ -211,7 +226,7 @@ export default {
                 const eventPath =
                     e.path || (e.composedPath && e.composedPath()) || []
                 const element = eventPath.find((element) =>
-                    element.classList.contains(DRAGGABLE_ITEM_CLASS)
+                    element.classList.contains(DDRAGGABLE_ITEM_CLASS)
                 )
                 if (element) {
                     e.dataTransfer.setDragImage(element, 0, 0)

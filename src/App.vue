@@ -108,6 +108,7 @@ export default {
                 tag="v-virtual-scroll"
                 ghost-class="ghost"
                 over-class="over"
+                handle=".handle"
                 :component-options="{
                     props: {
                         height: 400,
@@ -125,6 +126,7 @@ export default {
                         "
                     >
                         {{ item.text }}
+                        <a class="handle uk-margin-left" uk-icon="table" />
                     </div>
                 </template>
             </d-draggable>
