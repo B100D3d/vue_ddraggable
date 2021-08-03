@@ -3,10 +3,12 @@ import UIkit from "uikit"
 import Icons from "uikit/dist/js/uikit-icons"
 import DDraggable from "@/components/DDraggable/DDraggable"
 import DropZone from "@/components/DropZone"
+import DHeight from "@/components/DHeight"
+
 UIkit.use(Icons)
 export default {
     name: "App",
-    components: { DropZone, DDraggable },
+    components: { DHeight, DropZone, DDraggable },
     data() {
         return {
             items: [
@@ -62,45 +64,56 @@ export default {
         <div class="uk-position-top-right uk-margin-top uk-margin-right">
             <button uk-icon="move" class="uk-icon-button" @click="open" />
         </div>
-        <div class="uk-flex uk-flex-column uk-flex-middle">
-            <d-draggable
-                v-model="items"
-                item-key="id"
-                tag="transition-group"
-                ghost-class="ghost"
-                over-class="over"
-                effect="move"
-                drop-from
-                handle=".handle"
-                :component-options="{
-                    props: {
-                        tag: 'div',
-                        name: 'fade-move',
-                    },
-                }"
-            >
-                <template #item="{ item }">
-                    <div
-                        class="
-                            item
-                            uk-margin-top
-                            uk-text-center
-                            uk-padding-small
-                            uk-flex
-                            uk-flex-middle
-                        "
+
+        <div class="uk-height-1-1 uk-flex uk-flex-column uk-flex-middle">
+            <d-height class="uk-flex-1">
+                <template #default="{ height }">
+                    <d-draggable
+                        v-model="items"
+                        item-key="id"
+                        tag="transition-group"
+                        ghost-class="ghost"
+                        over-class="over"
+                        effect="move"
+                        drop-from
+                        handle=".handle"
+                        :component-options="{
+                            props: {
+                                tag: 'div',
+                                name: 'fade-move',
+                            },
+                            style: { height: `${height}px` },
+                        }"
                     >
-                        {{ item.text }}
-                        <a class="handle uk-margin-left" uk-icon="table" />
-                    </div>
+                        <template #item="{ item }">
+                            <div
+                                class="
+                                    item
+                                    uk-margin-top
+                                    uk-text-center
+                                    uk-padding-small
+                                    uk-flex
+                                    uk-flex-middle
+                                "
+                            >
+                                {{ item.text + height }}
+                                <a
+                                    class="handle uk-margin-left"
+                                    uk-icon="table"
+                                />
+                            </div>
+                        </template>
+                    </d-draggable>
                 </template>
-            </d-draggable>
+            </d-height>
+
             <a
                 uk-icon="icon: plus; ratio: 0.8"
                 class="uk-margin-top"
                 @click="addItem"
             />
         </div>
+
         <div class="uk-flex uk-flex-column uk-flex-middle">
             <d-draggable
                 v-model="vItems"
